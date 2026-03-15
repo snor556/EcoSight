@@ -7,6 +7,8 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     //cb => callback
     cb(null, 'uploads/')},
+    //filename helps save the file directly in that format instead of binary
+    
     filename : function(req,file,cb){
         const ext = path.extname(file.originalname);
         cb(null,Date.now() + ext);
