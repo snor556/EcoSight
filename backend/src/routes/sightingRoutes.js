@@ -1,7 +1,7 @@
 const express = require("express");
 
 const router = express.Router();
-const upload = require("./middlewares/multerMiddleWare.js");
+const upload = require("../middlewares/multerMiddleWare.js");
 
 //upload is middleware imported
 //single attributes indicates => work with single file
