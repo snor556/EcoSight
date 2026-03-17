@@ -17,11 +17,15 @@ router.post('/sighting',upload.single('file'),async (req,res)=>{
             console.log("routes reached")
             console.log(req.file)
             //calls the service for flask
-           const prediction = await identifySpecies(req.file.path);
+           const prediction = await identifySpecies(req.file.path,
+            req.body.latitude,
+            req.body.longitude);
             res.json({
                 "message" : "image recieved successfully",
                 "filename" : req.file.filename,
-                "prediction" : prediction
+                "prediction" : prediction,
+                "lat" : req.body.latitude,
+                "long": req.body.longitude   
             })
         }
     } catch (error) {
