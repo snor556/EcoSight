@@ -6,13 +6,13 @@ const port = 3000;
 
 
 app.use(express.json())
-app.get("/test",(req,res) => {
-    const jsonData = {
-        "name" : "raven",
-        "location" : "india"
-    }
-    res.json(jsonData)
-})
+// app.get("/test",(req,res) => {
+//     const jsonData = {
+//         "name" : "raven",
+//         "location" : "india"
+//     }
+//     res.json(jsonData)
+// })
 
 //get the sighting routes
 app.use("/api",uploadRoutes)
