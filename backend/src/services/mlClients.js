@@ -19,12 +19,7 @@ async function identifySpecies(filePath,lat,long){
     return response.data;
 
     } catch (error) {
-        console.log("Ml services error");
-        //this is for checking if it returns properly
-        //not work properly due to not connected to flask
-       const fallback = {prediction : "raven"}
-       console.log("returning fallback", fallback)
-       return fallback
+        console.error("ml error : ",error);
     }
 }
 
