@@ -1,4 +1,7 @@
-from tensorflow.keras.applications.mobilenet_v2 import decode_predictions
+# from tensorflow.keras.applications.mobilenet_v2 import decode_predictions
+from keras.applications.mobilenet_v2 import MobileNetV2
+from keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
+
 
 
 def get_prediction(model, processed_image):

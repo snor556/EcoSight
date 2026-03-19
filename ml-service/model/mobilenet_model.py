@@ -1,4 +1,5 @@
-from tensorflow.keras.applications import MobileNetV2
+# from tensorflow.keras.applications import MobileNetV2
+from keras.applications.mobilenet_v2 import MobileNetV2
 
 
 def load_mobilenet_model():

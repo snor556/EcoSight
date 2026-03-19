@@ -1,8 +1,9 @@
 from io import BytesIO
 from PIL import Image
 import numpy as np
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-
+# from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from keras.applications.mobilenet_v2 import MobileNetV2
+from keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
 
 def prepare_image(file_stream):
     """Convert an uploaded image file stream into MobileNetV2-ready tensor."""
