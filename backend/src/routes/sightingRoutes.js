@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../middlewares/multerMiddleWare.js");
 const identifySpecies = require("../services/mlClients.js");
-
+const parseDms = require("../utils/geoUtils.js");
 //upload is middleware imported
 //single attributes indicates => work with single file
 router.post('/sighting',upload.single('file'),async (req,res)=>{
@@ -16,16 +16,23 @@ router.post('/sighting',upload.single('file'),async (req,res)=>{
         else{
             console.log("routes reached")
             console.log(req.file)
+
+
             //calls the service for flask
            const prediction = await identifySpecies(req.file.path,
             req.body.latitude,
             req.body.longitude);
+
+            const lat = req.body.latitude;
+            const decLat = parseDms(lat);
+            const long =req.body.longitude;
+            const decLong = parseDms(long);
             res.json({
                 "message" : "image recieved successfully",
                 "filename" : req.file.filename,
                 "prediction" : prediction,
-                "lat" : req.body.latitude,
-                "long": req.body.longitude   
+                "lat" : decLat,
+                "long": decLong   
             })
         }
     } catch (error) {
