@@ -1,5 +1,10 @@
 function parseDms(dmsString){
 
+ const asFloat = parseFloat(dmsString);
+    if (!isNaN(asFloat) && !dmsString.includes('°') && !dmsString.includes("'") && !dmsString.includes('"')) {
+        return asFloat;
+    }
+
 const parts = dmsString.split(/[\u00B0\u2032\u2033]/);
 
 const degree = Number(parts[0]);
