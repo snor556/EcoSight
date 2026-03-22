@@ -19,7 +19,7 @@ async function identifySpecies(filePath,lat,long){
     return response.data;
 
     } catch (error) {
-        console.error("ml error : ",error);
+        console.error("ml error : ",error.messages);
     }
 }
 
