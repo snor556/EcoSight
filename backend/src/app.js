@@ -1,8 +1,11 @@
+require('dotenv').config();
+const connectDB = require('./config/db'); 
 const express = require("express");
 const uploadRoutes = require("./routes/sightingRoutes")
 
 const app = express();
 const port = 3000;
+connectDB(); 
 
 
 app.use(express.json())
