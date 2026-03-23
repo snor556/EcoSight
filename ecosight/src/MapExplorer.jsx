@@ -1,170 +1,178 @@
-import React, { useState } from 'react';
-import { 
-  Search, Filter, MapPin, Navigation, Plus, Minus, 
-  X, Calendar, Crosshair, ChevronRight 
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import MarkerClusterGroup from 'react-leaflet-cluster';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css'; // MUST import Leaflet CSS!
+import { Calendar, ChevronRight, Loader } from 'lucide-react';
 
-export default function MapExplorer() {
-  const [selectedSighting, setSelectedSighting] = useState(null);
-  const [showFilters, setShowFilters] = useState(true);
+// Create a custom modern map pin using standard HTML/CSS
+const customMarkerIcon = new L.divIcon({
+  className: 'custom-marker',
+  html: `
+    <div style="background-color: #10b981; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+      <div style="background-color: white; width: 12px; height: 12px; border-radius: 50%;"></div>
+    </div>
+    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #10b981; margin: -2px auto 0;"></div>
+  `,
+  iconSize: [36, 48],
+  iconAnchor: [18, 48], // Point of the icon that corresponds to marker's location
+  popupAnchor: [0, -48] // Point from which the popup should open relative to the iconAnchor
+});
 
-  // Mock data for map markers
-  const sightings = [
-    { id: 1, top: '45%', left: '30%', species: 'Blue Jay', confidence: '98%', date: 'Oct 24, 2025', image: 'https://images.unsplash.com/photo-1552728089-5716928236bd?auto=format&fit=crop&w=300&q=80' },
-    { id: 2, top: '60%', left: '55%', species: 'Red Fox', confidence: '92%', date: 'Oct 22, 2025', image: 'https://images.unsplash.com/photo-1474511320723-9a56873867b5?auto=format&fit=crop&w=300&q=80' },
-    { id: 3, top: '35%', left: '70%', species: 'Monarch Butterfly', confidence: '99%', date: 'Oct 20, 2025', image: 'https://images.unsplash.com/photo-1541426062085-78097d7ee46a?auto=format&fit=crop&w=300&q=80' },
-  ];
+// A helper component to smoothly fly the map to the user's location
+function MapRecenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, 13);
+  }, [center, map]);
+  return null;
+}
+// Create a highly visible, custom modern cluster icon
+const createCustomClusterIcon = (cluster) => {
+  const count = cluster.getChildCount(); // Get how many pins are in this cluster
 
-  // Mock data for clusters (dense areas)
-  const clusters = [
-    { id: 'c1', top: '50%', left: '45%', count: 12 },
-    { id: 'c2', top: '25%', left: '60%', count: 8 },
-    { id: 'c3', top: '75%', left: '35%', count: 34 },
-  ];
-
-  return (
-    <div className="relative w-full h-[calc(100vh-80px)] bg-sky-50 overflow-hidden rounded-3xl border border-gray-200 shadow-sm animate-in fade-in duration-500 font-sans">
-      
-      {/* Simulated Map Background (Using a stylized repeating pattern for the prototype) */}
-      <div 
-        className="absolute inset-0 opacity-40 mix-blend-multiply pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h100v100H0z' fill='none'/%3E%3Cpath d='M100 50A50 50 0 1 1 0 50a50 50 0 0 1 100 0z' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.2'/%3E%3Cpath d='M50 0v100M0 50h100' stroke='%2310b981' stroke-width='0.5' opacity='0.2'/%3E%3C/svg%3E")`,
-          backgroundSize: '150px 150px'
-        }}
-      ></div>
-
-      {/* RENDER CLUSTERS */}
-      {clusters.map(cluster => (
-        <div 
-          key={cluster.id}
-          className="absolute z-10 w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center animate-pulse cursor-pointer hover:bg-emerald-500/30 transition-colors"
-          style={{ top: cluster.top, left: cluster.left, transform: 'translate(-50%, -50%)' }}
-        >
-          <div className="w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold shadow-lg border-2 border-white">
-            {cluster.count}
-          </div>
-        </div>
-      ))}
-
-      {/* RENDER INDIVIDUAL MARKERS */}
-      {sightings.map(sighting => (
-        <div 
-          key={sighting.id}
-          onClick={() => setSelectedSighting(sighting)}
-          className="absolute z-20 cursor-pointer group"
-          style={{ top: sighting.top, left: sighting.left, transform: 'translate(-50%, -100%)' }}
-        >
-          <div className="relative">
-            <div className={`w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform ${selectedSighting?.id === sighting.id ? 'bg-amber-500 scale-125' : 'bg-emerald-600 group-hover:scale-110'}`}>
-              <MapPin size={16} className="text-white" />
-            </div>
-            {/* Map Pin Point */}
-            <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white ${selectedSighting?.id === sighting.id ? 'bg-amber-500' : 'bg-emerald-600'}`}></div>
-          </div>
-        </div>
-      ))}
-
-      {/* FLOATING FILTER PANEL (Left Side) */}
-      {showFilters && (
-        <div className="absolute top-6 left-6 z-30 w-80 bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-100 flex flex-col gap-5">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <Filter size={18} /> Map Filters
-            </h3>
-            <button onClick={() => setShowFilters(false)} className="text-gray-400 hover:text-gray-700">
-              <X size={18} />
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Search Species</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
-              <input type="text" placeholder="e.g. Blue Jay" className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Date Range</label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-2.5 text-gray-400" size={16} />
-              <select className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none">
-                <option>Last 30 Days</option>
-                <option>Last 6 Months</option>
-                <option>This Year</option>
-                <option>All Time</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Distance Radius</label>
-              <span className="text-xs font-bold text-emerald-600">50 km</span>
-            </div>
-            <input type="range" className="w-full accent-emerald-500" min="1" max="100" defaultValue="50" />
-          </div>
-
-          <button className="w-full bg-emerald-50 text-emerald-700 py-2.5 rounded-lg font-bold hover:bg-emerald-100 transition-colors mt-2 text-sm">
-            Apply Filters
-          </button>
-        </div>
-      )}
-
-      {/* FILTER TOGGLE BUTTON (If panel is hidden) */}
-      {!showFilters && (
-        <button 
-          onClick={() => setShowFilters(true)}
-          className="absolute top-6 left-6 z-30 bg-white p-3 rounded-xl shadow-md border border-gray-100 text-gray-700 hover:text-emerald-600 transition-colors"
-        >
-          <Filter size={20} />
-        </button>
-      )}
-
-      {/* MAP CONTROLS (Right Side) */}
-      <div className="absolute bottom-6 right-6 z-30 flex flex-col gap-3">
-        <button className="bg-white p-3 rounded-xl shadow-md border border-gray-100 text-gray-700 hover:text-emerald-600 transition-colors" title="My Location">
-          <Crosshair size={20} />
-        </button>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 flex flex-col overflow-hidden">
-          <button className="p-3 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors border-b border-gray-100">
-            <Plus size={20} />
-          </button>
-          <button className="p-3 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors">
-            <Minus size={20} />
-          </button>
+  return new L.divIcon({
+    html: `
+      <div style="
+        background-color: rgba(16, 185, 129, 0.2); /* Emerald glow */
+        width: 56px; height: 56px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+      ">
+        <div style="
+          background-color: #10b981; /* Emerald solid */
+          color: white;
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 900;
+          font-size: 16px;
+          border: 3px solid white;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        ">
+          ${count}
         </div>
       </div>
+    `,
+    className: 'custom-cluster-icon', // Removes the ugly default leaflet cluster background
+    iconSize: L.point(56, 56, true),
+  });
+};
+export default function MapExplorer() {
+  const [sightings, setSightings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [mapCenter, setMapCenter] = useState([20.59, 78.96]); // Default center (India)
 
-      {/* SIGHTING POPUP CARD */}
-      {selectedSighting && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200">
-          <div className="relative h-40">
-            <img src={selectedSighting.image} alt={selectedSighting.species} className="w-full h-full object-cover" />
-            <button 
-              onClick={() => setSelectedSighting(null)}
-              className="absolute top-2 right-2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full backdrop-blur-sm transition-colors"
-            >
-              <X size={16} />
-            </button>
-            <div className="absolute bottom-2 left-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
-              {selectedSighting.confidence} Match
-            </div>
-          </div>
-          <div className="p-5">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedSighting.species}</h3>
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-              <Calendar size={14} /> {selectedSighting.date}
-            </div>
-            <button className="w-full flex justify-between items-center bg-gray-50 hover:bg-emerald-50 border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-200 px-4 py-2.5 rounded-xl font-medium transition-colors text-sm group">
-              View Species Details 
-              <ChevronRight size={16} className="text-gray-400 group-hover:text-emerald-600 transition-colors" />
-            </button>
-          </div>
+  const loadNearbySightings = async (lat, lng, radius = 50000) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`http://localhost:3000/api/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
+      
+      const realSightings = response.data.data.map((sighting) => {
+        return {
+          id: sighting._id,
+          // THE FIX: MongoDB sends [Long, Lat]. Leaflet needs [Lat, Long].
+          position: [sighting.location.coordinates[1], sighting.location.coordinates[0]],
+          species: sighting.species,
+          confidence: sighting.confidence,
+          date: new Date(sighting.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          image: sighting.imageUrl,
+          description: sighting.description
+        };
+      });
+
+      setSightings(realSightings);
+    } catch (error) {
+      console.error("Error fetching map data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setMapCenter([lat, lng]);
+          loadNearbySightings(lat, lng);
+        },
+        (error) => {
+          console.log("Location access denied.");
+          loadNearbySightings(mapCenter[0], mapCenter[1]);
+        }
+      );
+    } else {
+      loadNearbySightings(mapCenter[0], mapCenter[1]);
+    }
+  }, []);
+
+  return (
+    <div className="relative w-full h-[calc(100vh-80px)] overflow-hidden rounded-3xl border border-gray-200 shadow-sm animate-in fade-in duration-500 font-sans z-0">
+      
+      {isLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/50 backdrop-blur-sm z-[1000]">
+          <Loader className="animate-spin text-emerald-600 mb-4" size={48} />
+          <p className="text-gray-600 font-bold">Scanning area for wildlife...</p>
         </div>
       )}
 
+      {/* THE REAL LEAFLET MAP */}
+      <MapContainer 
+        center={mapCenter} 
+        zoom={5} 
+        style={{ height: "100%", width: "100%" }}
+        zoomControl={false} // Hiding default controls for a cleaner look
+      >
+        <MapRecenter center={mapCenter} />
+        
+        {/* OpenStreetMap Tiles (Free!) */}
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {/* Plotting our real MongoDB data inside a Cluster Group! */}
+        <MarkerClusterGroup
+          chunkedLoading // Helps performance if you have thousands of markers
+          maxClusterRadius={50} // The pixel radius to group markers together
+          iconCreateFunction={createCustomClusterIcon}
+        >
+          {sightings.map(sighting => (
+            <Marker 
+              key={sighting.id} 
+              position={sighting.position} 
+              icon={customMarkerIcon}
+            >
+              <Popup className="custom-popup" closeButton={false}>
+                <div className="w-64 -m-3 overflow-hidden rounded-xl">
+                  <div className="relative h-32">
+                    <img src={sighting.image} alt={sighting.species} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-2 left-2 bg-emerald-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">
+                      {sighting.confidence}% Match
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1 capitalize !m-0">{sighting.species}</h3>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+                      <Calendar size={12} /> {sighting.date}
+                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-3 !m-0 mb-3 leading-relaxed">
+                      {sighting.description}
+                    </p>
+                    <button className="w-full flex justify-between items-center text-emerald-600 font-bold text-xs group">
+                      View Details 
+                      <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
+      </MapContainer>
     </div>
   );
 }

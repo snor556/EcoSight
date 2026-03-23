@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { 
   Leaf, Search, Bell, User, UploadCloud, Map as MapIcon, 
   MapPin, CheckCircle2, AlertTriangle, Settings, Calendar,
@@ -244,6 +245,74 @@ function StatCard({ title, value, icon, bg }) {
 // Upload View (Unchanged mostly, just contained inside main)
 // -----------------------------------------------------------------
 function UploadView({ uploadState, setUploadState }) {
+  // 1. New State Variables to hold our real data
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null); // To show the image before uploading
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [resultData, setResultData] = useState(null); // Holds the backend response
+
+  // 2. Handle File Selection
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPreviewUrl(URL.createObjectURL(selectedFile)); // Show local preview
+    }
+  };
+
+  // 3. Get Real GPS Coordinates from the Browser
+  const getLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setLatitude(position.coords.latitude);
+        setLongitude(position.coords.longitude);
+      }, (error) => {
+        alert("Please allow location access to tag your sighting!");
+      });
+    }
+  };
+
+  // 4. The Integration Hero Function!
+  const handleUpload = async () => {
+    if (!file || !latitude || !longitude) {
+      alert("Please select an image and get your GPS location first!");
+      return;
+    }
+
+    setIsUploading(true);
+    
+    // Create the exact Form-Data structure Postman used
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("latitude", latitude);
+    formData.append("longitude", longitude);
+
+    try {
+      // Send to your Node.js backend! 
+      // (Make sure your backend app.use(cors()) is enabled!)
+      const response = await axios.post("http://localhost:3000/api/sighting", formData);
+      
+      // Save the real Cloudinary URL, Wikipedia text, and species name
+      setResultData(response.data.data); 
+      setUploadState('complete');
+      
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("Failed to analyze image. Is your backend running?");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const resetUpload = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    setResultData(null);
+    setUploadState('idle');
+  };
+
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in duration-500">
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Identify a Species</h1>
@@ -251,66 +320,85 @@ function UploadView({ uploadState, setUploadState }) {
 
       {uploadState === 'idle' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="border-2 border-dashed border-emerald-200 bg-emerald-50/30 rounded-3xl p-12 flex flex-col items-center justify-center text-center hover:bg-emerald-50/80 cursor-pointer min-h-[400px] transition-colors">
-            <div className="bg-white p-4 rounded-full shadow-sm mb-4">
-              <UploadCloud size={32} className="text-emerald-600" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-800 mb-1">Drag & drop your image here</h3>
-            <p className="text-gray-500 mb-6 text-sm">Supports JPG, PNG, WEBP (Max 10MB)</p>
-            <button className="bg-white border border-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium shadow-sm hover:bg-gray-50 transition-colors">
-              Browse Files
-            </button>
+          
+          {/* IMAGE UPLOAD BOX */}
+          <div className="border-2 border-dashed border-emerald-200 bg-emerald-50/30 rounded-3xl p-12 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[400px]">
+            
+            {/* The invisible file input */}
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={handleFileChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+            />
+            
+            {previewUrl ? (
+              <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-3xl" />
+            ) : (
+              <>
+                <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+                  <UploadCloud size={32} className="text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">Click or drag image here</h3>
+                <p className="text-gray-500 mb-6 text-sm">Supports JPG, PNG (Max 10MB)</p>
+                <button className="bg-white border border-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium shadow-sm pointer-events-none">
+                  Browse Files
+                </button>
+              </>
+            )}
           </div>
 
+          {/* METADATA FORM */}
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location (Required)</label>
               <div className="flex gap-2">
-                <input type="text" placeholder="e.g. Yosemite National Park" className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
-                <button className="bg-sky-50 text-sky-600 p-3 rounded-xl border border-sky-100 hover:bg-sky-100 transition-colors" title="Use GPS">
+                <input 
+                  type="text" 
+                  readOnly
+                  value={latitude ? `${latitude}, ${longitude}` : ""}
+                  placeholder="Click the GPS button ->" 
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none" 
+                />
+                <button onClick={getLocation} className="bg-sky-50 text-sky-600 p-3 rounded-xl border border-sky-100 hover:bg-sky-100 transition-colors" title="Use GPS">
                   <MapPin size={20} />
                 </button>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-3.5 text-gray-400" size={20} />
-                <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-              <textarea placeholder="Behaviors observed?" rows="3" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"></textarea>
-            </div>
+            
             <button 
-              onClick={() => setUploadState('complete')}
-              className="mt-auto bg-emerald-600 hover:bg-emerald-700 text-white w-full py-4 rounded-xl shadow-md shadow-emerald-200 font-bold transition-all text-lg"
+              onClick={handleUpload}
+              disabled={isUploading}
+              className={`mt-auto w-full py-4 rounded-xl shadow-md font-bold transition-all text-lg ${
+                isUploading ? 'bg-gray-400 text-gray-200' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
+              }`}
             >
-              Analyze & Identify
+              {isUploading ? 'Analyzing Image...' : 'Analyze & Identify'}
             </button>
           </div>
         </div>
       )}
 
-      {uploadState === 'complete' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
+      {/* SUCCESS RESULTS SCREEN */}
+      {uploadState === 'complete' && resultData && (
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row animate-in slide-in-from-bottom-4">
           <div className="md:w-1/2 bg-gray-100 min-h-[400px] relative">
-            <img src="https://images.unsplash.com/photo-1552728089-5716928236bd?auto=format&fit=crop&w=800&q=80" alt="Uploaded Blue Jay" className="absolute inset-0 w-full h-full object-cover" />
+             {/* Showing the real Cloudinary Image! */}
+            <img src={resultData.imageUrl} alt={resultData.species} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <div className="p-8 md:w-1/2">
-            <div className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-bold mb-4">98% Match</div>
-            <h2 className="text-4xl font-bold text-gray-900 mb-1">Blue Jay</h2>
-            <p className="text-lg italic text-gray-500 mb-6">Cyanocitta cristata</p>
-            <p className="text-gray-600 mb-6">A large, crested songbird with broad, rounded wings. Blue Jays are known for their intelligence and complex social systems.</p>
-            <div className="flex gap-4 mb-8">
-              <button className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-emerald-100 transition-colors">
-                <MapPin size={18} /> View on Map
-              </button>
+            <div className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-bold mb-4">
+              {resultData.confidence}% AI Match
             </div>
+            <h2 className="text-4xl font-bold text-gray-900 mb-1 capitalize">{resultData.species}</h2>
+            <p className="text-gray-600 mb-6 text-sm leading-relaxed mt-4">
+              {/* Showing the real Wikipedia Summary! */}
+              {resultData.description}
+            </p>
+            
             <button 
-              onClick={() => setUploadState('idle')}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 py-3 rounded-xl font-medium transition-colors"
+              onClick={resetUpload}
+              className="mt-8 w-full bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 py-3 rounded-xl font-medium transition-colors"
             >
               Upload Another Sighting
             </button>
