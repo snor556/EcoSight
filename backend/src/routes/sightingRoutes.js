@@ -1,5 +1,6 @@
 const express = require("express");
 const getSpeciesInfo = require("../services/speciesInfo.js");
+
 const router = express.Router();
 const upload = require("../middlewares/multerMiddleWare.js");
 const identifySpecies = require("../services/mlClients.js");
@@ -61,12 +62,14 @@ router.post('/sighting',upload.single('file'),async (req,res)=>{
             req.body.latitude,
             req.body.longitude);
             
-            const info = await getSpeciesInfo(prediction.species)
-
+            
             const lat = req.body.latitude;
             const decLat = parseDms(lat);
             const long =req.body.longitude;
             const decLong = parseDms(long);
+
+            const info = await getSpeciesInfo(prediction.species, decLat, decLong);
+            
             const newSighting = new Sighting({
                 imageUrl : req.file.filename,
                 species : prediction.species,
@@ -75,7 +78,7 @@ router.post('/sighting',upload.single('file'),async (req,res)=>{
                     type : 'Point',
                     coordinates : [decLong , decLat]
                 },
-                description : info
+                description : info ? info.summary : "Information currently unavailable."
             });
             const savedSighting = await newSighting.save()
             res.json({
