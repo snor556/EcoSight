@@ -1,18 +1,21 @@
-from io import BytesIO
-from PIL import Image
 import numpy as np
-# from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from keras.applications.mobilenet_v2 import MobileNetV2
-from keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
+from PIL import Image
+from keras.applications.efficientnet import preprocess_input
 
-def prepare_image(file_stream):
-    """Convert an uploaded image file stream into MobileNetV2-ready tensor."""
-    image = Image.open(BytesIO(file_stream.read()))
-    image = image.convert("RGB")
-    #image = image.resize((224, 224), Image.ANTIALIAS)
-    image = image.resize((224, 224), Image.LANCZOS)
+def prepare_image(image_stream):
+    """Prepare image for EfficientNet B4."""
 
-    img_array = np.array(image, dtype=np.float32)
-    img_array = np.expand_dims(img_array, axis=0)
+    # ✅ EfficientNet B4 needs 380x380
+    IMAGE_SIZE = (380, 380)
+
+    img       = Image.open(image_stream).convert("RGB")
+    img       = img.resize(IMAGE_SIZE)
+    img_array = np.array(img, dtype=np.float32)
+
+    # ✅ EfficientNet has its own preprocessing
     img_array = preprocess_input(img_array)
+
+    # add batch dimension → (1, 380, 380, 3)
+    img_array = np.expand_dims(img_array, axis=0)
+
     return img_array

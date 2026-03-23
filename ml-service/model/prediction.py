@@ -1,50 +1,65 @@
-# from tensorflow.keras.applications.mobilenet_v2 import decode_predictions
-from keras.applications.mobilenet_v2 import MobileNetV2
-from keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
-from utils.labelMap import IMAGENET_TO_COMMON  
-#above is imported to give common name 
+from keras.applications.efficientnet import decode_predictions
+from utils.labelMap import IMAGENET_TO_COMMON
 
+MARINE_SPECIES = [
+    "shark", "ray", "fish", "tuna", "salmon", "eel",
+    "stingray", "whale", "dolphin", "seal", "crab",
+    "lobster", "jellyfish", "walrus", "otter"
+]
 
 def get_common_name(imagenet_label):
-    # check for exact match first
-    if imagenet_label in IMAGENET_TO_COMMON:
-        return IMAGENET_TO_COMMON[imagenet_label]
+    # 1. Remove those underscores for Wikipedia! (tiger_cat -> tiger cat)
+    clean_label = imagenet_label.replace('_', ' ')
     
-    # check if any key contains the label
+    # 2. Check exact match first
+    if clean_label in IMAGENET_TO_COMMON:
+        return IMAGENET_TO_COMMON[clean_label]
+        
+    # 3. Smarter substring match (prevents "tiger" matching "tiger shark")
     for key, value in IMAGENET_TO_COMMON.items():
-        if imagenet_label.lower() in key.lower():
+        # Split the ImageNet string by commas to check exact animal names
+        possible_names = [name.strip().lower() for name in key.split(',')]
+        if clean_label.lower() in possible_names:
             return value
-    
-    # fallback — return as is
-    return imagenet_label
+            
+    # 4. Fallback — return the clean label capitalized (e.g. "Tiger Cat")
+    return clean_label.title()
 
-
-# def get_prediction(model, processed_image):
-#     """Run model inference and decode the top ImageNet class."""
-#     preds = model.predict(processed_image)
-#     decoded = decode_predictions(preds, top=1)[0][0]
-
-#     raw_species = decoded[1]  # human-readable label
-#     species = get_common_name(raw_species) #send name and convert it
-#     confidence = float(decoded[2] * 100.0)
-#     return species, round(confidence, 2)
-
+def is_marine(label):
+    return any(marine in label.lower() for marine in MARINE_SPECIES)
 
 def get_prediction(model, processed_image):
-    """Run model inference and decode the top ImageNet class."""
+    """Run EfficientNet B4 inference with top 3 predictions."""
     try:
-        preds = model.predict(processed_image)
-        decoded = decode_predictions(preds, top=1)[0][0]
+        preds   = model.predict(processed_image)
 
-        raw_species = decoded[1]        # raw ImageNet label
-        confidence  = float(decoded[2]) * 100.0  # convert to percentage
+        # ✅ get top 3 predictions
+        decoded = decode_predictions(preds, top=3)[0]
 
-        species = get_common_name(raw_species)  # translate to common name
+        print("\n--- Top 3 Predictions ---")
+        for i, (id, label, score) in enumerate(decoded):
+            print(f"{i+1}. {label} → {round(score * 100, 2)}%")
+        print("-------------------------\n")
 
-        # # ✅ log both so you can debug easily
-        # print(f"Raw label   : {raw_species}")
-        # print(f"Common name : {species}")
-        # print(f"Confidence  : {round(confidence, 2)}%")
+        # ✅ pick best non-marine result
+        best = None
+        for (id, label, score) in decoded:
+            common = get_common_name(label)
+            if is_marine(common.lower()):
+                print(f"Skipping marine: {common}")
+                continue
+            best = (label, common, float(score) * 100)
+            break
+
+        # fallback if all are marine
+        if not best:
+            id, label, score = decoded[0]
+            best = (label, get_common_name(label), float(score) * 100)
+
+        raw_label, species, confidence = best
+
+        print(f"Final prediction : {species}")
+        print(f"Confidence       : {round(confidence, 2)}%")
 
         return species, round(confidence, 2)
 

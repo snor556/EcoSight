@@ -1,8 +1,9 @@
-# from tensorflow.keras.applications import MobileNetV2
-from keras.applications.mobilenet_v2 import MobileNetV2
-
+# model/mobilenet_model.py
+from keras.applications.efficientnet import EfficientNetB4
 
 def load_mobilenet_model():
-    """Load MobileNetV2 once at server start to keep inference fast."""
-    model = MobileNetV2(weights="imagenet")
+    """Load EfficientNetB4 — drop-in replacement for MobileNet."""
+    print("Loading EfficientNet B4 model...")
+    model = EfficientNetB4(weights='imagenet')
+    print("EfficientNet B4 loaded successfully!")
     return model

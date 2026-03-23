@@ -17,6 +17,7 @@ def allowed_file(filename):
 
 
 # Load model once at startup
+# model = load_mobilenet_model()
 model = load_mobilenet_model()
 
 
