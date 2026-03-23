@@ -71,7 +71,7 @@ router.post('/sighting',upload.single('file'),async (req,res)=>{
             const info = await getSpeciesInfo(prediction.species, decLat, decLong);
             
             const newSighting = new Sighting({
-                imageUrl : req.file.filename,
+                imageUrl : req.file.path,
                 species : prediction.species,
                 confidence : prediction.confidence,
                 location : {

@@ -1,25 +1,33 @@
 const axios = require("axios");
-const fs = require("fs");
 const FormData = require("form-data");
-async function identifySpecies(filePath,lat,long){
+
+async function identifySpecies(imageUrl, lat, long){
     try {
+        // 1. Download the image from Cloudinary as a data stream
+        const imageResponse = await axios.get(imageUrl, { 
+            responseType: 'stream' 
+        });
         
         const formData = new FormData();
-        //file => fieldname , createReadStream => reads data in stream
-        //here it references the data
-        formData.append("file",fs.createReadStream(filePath));
-        formData.append("latitude",lat);
-        formData.append("longitude",long);
-        //formData => loads the data into server
-        //here it is read in stream
-        const response = await axios.post("http://localhost:5000/predict",formData,{
-            //specify the header to multipart data
-            headers:formData.getHeaders()
-        })
-    return response.data;
+        
+        // 2. Append the downloaded stream directly into the form
+        // We add "cloud_image.jpg" so the Python server recognizes it as a valid file format
+        formData.append("file", imageResponse.data, "cloud_image.jpg");
+        formData.append("latitude", lat);
+        formData.append("longitude", long);
+        
+        // 3. Send the loaded form to your Python Flask server
+        const response = await axios.post("http://localhost:5000/predict", formData, {
+            headers: formData.getHeaders()
+        });
+        
+        return response.data;
 
     } catch (error) {
-        console.error("ml error : ",error.messages);
+        // Changed to error.message to log properly, and added a throw statement
+        // so the main route safely catches the crash instead of returning undefined!
+        console.error("ML error : ", error.message);
+        throw error; 
     }
 }
 

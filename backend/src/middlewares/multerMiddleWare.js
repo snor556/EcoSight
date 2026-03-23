@@ -1,21 +1,26 @@
-//this is multer middle ware to upload the image
-const multer = require("multer")
-const path = require("path");
+require("dotenv").config(); // Loads your .env secrets
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-//configures the storage path 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    //cb => callback
-    cb(null, 'uploads/')},
-    //filename helps save the file directly in that format instead of binary
-    
-    filename : function(req,file,cb){
-        const ext = path.extname(file.originalname);
-        cb(null,Date.now() + ext);
+// 1. Authenticate with Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// 2. Configure the Cloud Storage Engine
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "ecosight_wildlife", // The folder name inside your Cloudinary account
+        allowedFormats: ["jpg", "png", "jpeg"],
+        transformation: [{ width: 800, crop: "limit" }] // Automatically resizes massive 4K images to save bandwidth!
     }
-  }
-)
+});
 
-const upload = multer({ storage: storage })
+// 3. Export the upgraded Multer instance
+const upload = multer({ storage: storage });
 
 module.exports = upload;
