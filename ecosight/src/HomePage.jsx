@@ -53,7 +53,10 @@ export default function HomePage({ onGetStarted }) {
           <a href="#community" className="hover:text-emerald-600 transition-colors">Community</a>
         </div>
         <div className="flex gap-4">
-          <button className="hidden md:block px-5 py-2.5 text-emerald-700 font-medium hover:bg-emerald-50 rounded-xl transition-colors">
+          <button 
+            onClick={onGetStarted} 
+            className="hidden md:block px-5 py-2.5 text-emerald-700 font-medium hover:bg-emerald-50 rounded-xl transition-colors"
+          >
             Log In
           </button>
           <button 

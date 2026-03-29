@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const sightingSchema = new mongoose.Schema(
-    {
+    { // ARGUMENT 1: The Definition Object (All database columns go in here!)
         imageUrl: {
             type: String,
             required: true
@@ -26,10 +26,26 @@ const sightingSchema = new mongoose.Schema(
         },
         description : {
             type : String,
-            // required: true
-        }
+        },
+        // NEW: The user field is now safely inside the definition object!
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',   // This exactly matches the 'User' export in your User.js file
+            required: true // A sighting MUST have an owner
+        },
+        // NEW SOCIAL HUB FIELDS:
+        title: { type: String },
+        tag: { type: String, default: 'Discussion' },
+        upvotes: { type: Number, default: 0 },
+        comments: [
+            {
+                user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                text: { type: String, required: true },
+                createdAt: { type: Date, default: Date.now }
+            }
+        ]
     },
-    {
+    { // ARGUMENT 2: The Options Object
         timestamps: true  // adds createdAt and updatedAt automatically
     }
 );

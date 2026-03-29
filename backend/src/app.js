@@ -3,6 +3,7 @@ const connectDB = require('./config/db');
 const express = require("express");
 const cors    = require("cors"); 
 const uploadRoutes = require("./routes/sightingRoutes")
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const port = 3000;
@@ -21,7 +22,7 @@ app.use(express.json())
 
 //get the sighting routes
 app.use("/api",uploadRoutes)
-
+app.use('/api/auth', authRoutes);
 
 app.listen(port , () => {
     console.log(`listening on http://localhost:${port}`) 
