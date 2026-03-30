@@ -1,102 +1,70 @@
 const axios = require("axios");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Step 1 — convert lat/lng to country name (free, no API key needed)
+// 1. Initialize Gemini with your vault key
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// 2. Keep your awesome Reverse Geocoding function!
 async function getCountryFromCoords(lat, lng) {
     try {
         const res = await axios.get(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&accept-language=en&format=json`,
             {
-                headers: {
-                    "User-Agent": "EcoSight/1.0 (beastq010@gmail.com)"
-                }
+                headers: { "User-Agent": "EcoSight/1.0" }
             }
         );
         const country = res.data.address.country;
         console.log("Country detected:", country);
-        return country; // e.g. "India", "Kenya", "Brazil"
-
+        return country; 
     } catch (error) {
         console.error("Geocoding error:", error.message);
         return null;
     }
 }
 
-// Step 2 — search Wikipedia with species + country
-async function searchWikipedia(query) {
-    try {
-        // first search for the best matching article
-        const searchRes = await axios.get(
-            `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=1`,
-            {
-                headers: {
-                    "User-Agent": "EcoSight/1.0 (beastq010@gmail.com)"
-                }
-            }
-        );
-        //optional chaining returns undefined for missing in case of null
-        const topResult = searchRes.data?.query?.search?.[0];
-        if (!topResult) return null;
-
-        console.log("Wikipedia top result:", topResult.title);
-
-        // then fetch the summary of that article
-        const summaryRes = await axios.get(
-            `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topResult.title)}`,
-            {
-                headers: {
-                    "User-Agent": "EcoSight/1.0 (beastq010@gmail.com)"
-                }
-            }
-        );
-
-        return summaryRes.data;
-
-    } catch (error) {
-        console.error("Wikipedia search error:", error.message);
-        return null;
-    }
-}
-
+// 3. The New Gemini-Powered Info Fetcher
 async function getSpeciesInfo(species, lat, lng) {
     try {
+        // Find the country first
         const country = await getCountryFromCoords(lat, lng);
+        
+        // Build context: If we don't have the country, fall back to coordinates
+        const locationContext = country ? country : `latitude ${lat}, longitude ${lng}`;
 
-        // ✅ use let — needs to be reassignable
-        let query   = country ? `${species} ${country}` : species;
-        let wikiData = await searchWikipedia(query);
+        // Select the Gemini model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        console.log("Searching Wikipedia for:", query);
+        // The Prompt Engine
+        const prompt = `You are an expert wildlife biologist. The user just photographed a ${species} in ${locationContext}. 
+        Write a fun, engaging, 3-sentence educational summary about this animal that focuses on its habitat, diet, and a fun fact. 
+        Important: Return ONLY the plain text summary. Do not use markdown, bolding, asterisks, or conversational filler.`;
 
-        // Strike 1 failed — try generic search
-        if (country && (!wikiData || !wikiData.title.toLowerCase().includes(species.toLowerCase()))) {
-            console.log(`Strike 1 failed. Falling back to generic search for: ${species}`);
+        // Generate the text
+        const result = await model.generateContent(prompt);
+        const summaryText = result.response.text().trim();
 
-            // ✅ now reassignment works because of let
-            query    = species;
-            wikiData = await searchWikipedia(query);
-        }
+        console.log(`Successfully generated Gemini biography for ${species}`);
 
-        if (!wikiData) return null;
-
-        // Strike 2 failed — return just species name
-        if (!wikiData.title.toLowerCase().includes(species.toLowerCase())) {
-            console.log("Wikipedia result unrelated, falling back to species name");
-            return { commonName: species, summary: null, wikiUrl: null };
-        }
-
+        // 4. Uphold the "Contract" by returning the same structure!
+        // (We set wikiUrl and thumbnail to null since we don't scrape Wikipedia anymore)
         return {
-            commonName : wikiData.title,
-            summary    : wikiData.extract,
-            wikiUrl    : wikiData.content_urls?.desktop?.page,
-            thumbnail  : wikiData.thumbnail?.source || null,
+            commonName : species,
+            summary    : summaryText,
+            wikiUrl    : null,
+            thumbnail  : null,
             country    : country
         };
 
     } catch (error) {
         console.error("getSpeciesInfo error:", error.message);
-        return null;
+        return {
+            commonName: species,
+            summary: "This is a fascinating species! Detailed AI information is currently taking a moment to load.",
+            wikiUrl: null,
+            thumbnail: null,
+            country: null
+        };
     }
 }
-
 
 module.exports = getSpeciesInfo;
