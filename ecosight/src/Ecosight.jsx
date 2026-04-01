@@ -3,14 +3,27 @@ import axios from 'axios';
 import { 
   Leaf, Search, Bell, User, UploadCloud, Map as MapIcon, 
   MapPin, CheckCircle2, AlertTriangle, Settings, Calendar,
-  Grid, List, ChevronRight, Mail, MessageSquare, X
+  Grid, List, ChevronRight, Mail, MessageSquare, X, Loader, SearchX
 } from 'lucide-react';
 import MapExplorer from './MapExplorer';
-import CommunityView from './CommunityView';
+import CommunityView , { DiscussionCard, AchievementStrip } from './CommunityView';
 
 export default function EcoSightApp({ onLogout }) {
-  // We only need activeTab here now!
   const [activeTab, setActiveTab] = useState('profile'); 
+  
+  // NEW: Search States
+  const [searchInput, setSearchInput] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
+
+  // NEW: Search Handler
+  const handleSearch = (e) => {
+    e.preventDefault(); 
+    if (searchInput.trim()) {
+      setActiveQuery(searchInput.trim()); 
+      setActiveTab('search'); 
+      setSearchInput(''); 
+    }
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-gray-800 relative">
@@ -27,42 +40,25 @@ export default function EcoSightApp({ onLogout }) {
 
           {/* Center Navigation Links */}
           <nav className="flex items-center gap-2 md:gap-6 w-2/4 justify-center">
-            <NavButton 
-              active={activeTab === 'community'} 
-              onClick={() => setActiveTab('community')} 
-              icon={<MessageSquare size={20} />} 
-              label="Community" 
-            />
-            <NavButton 
-              active={activeTab === 'upload'} 
-              onClick={() => setActiveTab('upload')} 
-              icon={<UploadCloud size={20} />} 
-              label="Upload" 
-            />
-            <NavButton 
-              active={activeTab === 'map'} 
-              onClick={() => setActiveTab('map')} 
-              icon={<MapIcon size={20} />} 
-              label="Map Explorer" 
-            />
-            <NavButton 
-              active={activeTab === 'profile'} 
-              onClick={() => setActiveTab('profile')} 
-              icon={<User size={20} />} 
-              label="My Profile" 
-            />
+            <NavButton active={activeTab === 'community'} onClick={() => setActiveTab('community')} icon={<MessageSquare size={20} />} label="Community" />
+            <NavButton active={activeTab === 'upload'} onClick={() => setActiveTab('upload')} icon={<UploadCloud size={20} />} label="Upload" />
+            <NavButton active={activeTab === 'map'} onClick={() => setActiveTab('map')} icon={<MapIcon size={20} />} label="Map Explorer" />
+            <NavButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<User size={20} />} label="My Profile" />
           </nav>
 
           {/* Right Side: Search & Actions */}
           <div className="flex items-center justify-end gap-4 w-1/4 ml-auto">
-            <div className="relative hidden lg:block w-48 xl:w-64">
+            {/* NEW: Changed this to a Form! */}
+            <form onSubmit={handleSearch} className="relative hidden lg:block w-48 xl:w-64">
               <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
               <input 
                 type="text" 
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search..." 
                 className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
               />
-            </div>
+            </form>
             <button className="p-2 text-gray-500 hover:text-emerald-600 transition-colors relative">
               <Bell size={20} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full"></span>
@@ -81,6 +77,8 @@ export default function EcoSightApp({ onLogout }) {
         {activeTab === 'upload' && <UploadView />} 
         {activeTab === 'map' && <MapExplorer />}
         {activeTab === 'community' && <CommunityView />}
+        {/* NEW: Added the Search Results View here */}
+        {activeTab === 'search' && <SearchResults query={activeQuery} />}
       </main>
     </div>
   );
@@ -688,6 +686,70 @@ function EditProfileModal({ currentUser, onClose, onUpdate }) {
             </div>
           </form>
         </div>
+      </div>
+    </div>
+  );
+}
+// -----------------------------------------------------------------
+// Search Results View
+// -----------------------------------------------------------------
+function SearchResults({ query }) {
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get the logged-in user so the DiscussionCards work properly
+  const currentUserString = localStorage.getItem('ecoSightUser');
+  const currentUser = currentUserString ? JSON.parse(currentUserString) : null;
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('ecoSightToken');
+        const response = await axios.get(`http://localhost:3000/api/sightings/search?query=${query}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setResults(response.data.data);
+      } catch (error) {
+        console.error("Search failed:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (query) {
+      fetchResults();
+    }
+  }, [query]);
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-64"><Loader className="animate-spin text-emerald-600" size={40} /></div>;
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto py-8 animate-in fade-in duration-500">
+      <div className="mb-8 border-b border-gray-200 pb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Search Results</h1>
+        <p className="text-gray-500">Showing matches for <span className="font-bold text-emerald-600">"{query}"</span></p>
+      </div>
+
+      <div className="space-y-6">
+        {results.length === 0 ? (
+          <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+            <SearchX size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-xl font-bold text-gray-700 mb-2">No sightings found</h3>
+            <p className="text-gray-500">Try searching for a different species or location keyword.</p>
+          </div>
+        ) : (
+          results.map((item) => {
+            const isDiscussionPost = !!item.title;
+            if (isDiscussionPost) {
+              return <DiscussionCard key={item._id} post={item} currentUser={currentUser} />;
+            } else {
+              return <AchievementStrip key={item._id} sighting={item} />;
+            }
+          })
+        )}
       </div>
     </div>
   );

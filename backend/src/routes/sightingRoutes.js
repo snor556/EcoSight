@@ -8,9 +8,9 @@ const parseDms = require("../utils/geoUtils.js");
 const Sighting = require("../models/Sighting.js");
 
 // NEW 1: Added curly braces {} around getUserSightings!
-const { getUserSightings , getAllSightings , upvotePost, addComment} = require("../controllers/sightingController.js");
+const { getUserSightings , getAllSightings , upvotePost, addComment , voteOnPoll , searchSightings} = require("../controllers/sightingController.js");
 const { protect } = require('../middlewares/authMiddleware');
-
+router.get('/sightings/search', searchSightings);
 router.get('/nearby', async(req,res) => {
     // ... (Your nearby logic remains exactly the same)
     const lat = parseFloat(req.query.lat);
@@ -97,6 +97,7 @@ router.post('/sighting', protect, upload.single('file'), async (req,res)=>{
 // NEW: Manual Community Post (Skips the AI model)
 router.post('/sightings/discussion', protect, upload.single('file'), async (req, res) => {
     try {
+        const parsedPoll = req.body.poll ? JSON.parse(req.body.poll) : undefined
         const newPost = new Sighting({
             title: req.body.title,
             tag: req.body.tag,
@@ -107,7 +108,8 @@ router.post('/sightings/discussion', protect, upload.single('file'), async (req,
             location: {
                 type: 'Point',
                 coordinates: [0, 0] // [longitude, latitude]
-            }
+            },
+            poll : parsedPoll
         });
         
         const savedPost = await newPost.save();
@@ -121,4 +123,6 @@ router.post('/sightings/discussion', protect, upload.single('file'), async (req,
 // Social Interaction Routes
 router.put('/sightings/:id/upvote', protect, upvotePost);
 router.post('/sightings/:id/comment', protect, addComment);
+
+router.post('/sightings/:id/vote', protect, voteOnPoll);
 module.exports = router;

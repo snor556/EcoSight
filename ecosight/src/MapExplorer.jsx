@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import MarkerClusterGroup from 'react-leaflet-cluster';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css'; // MUST import Leaflet CSS!
 import { Calendar, ChevronRight, Loader } from 'lucide-react';
@@ -64,7 +64,9 @@ export default function MapExplorer() {
   const [isLoading, setIsLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState([20.59, 78.96]); // Default center (India)
 
-  const loadNearbySightings = async (lat, lng, radius = 50000) => {
+  const [radius, setRadius] = useState(50000);
+
+  const loadNearbySightings = async (lat, lng, searchRadius) => {
     setIsLoading(true);
     try {
       const response = await axios.get(`http://localhost:3000/api/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
@@ -97,17 +99,21 @@ export default function MapExplorer() {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           setMapCenter([lat, lng]);
-          loadNearbySightings(lat, lng);
+          loadNearbySightings(lat, lng, radius);
         },
         (error) => {
           console.log("Location access denied.");
-          loadNearbySightings(mapCenter[0], mapCenter[1]);
+          loadNearbySightings(mapCenter[0], mapCenter[1],radius);
         }
       );
     } else {
-      loadNearbySightings(mapCenter[0], mapCenter[1]);
+      loadNearbySightings(mapCenter[0], mapCenter[1],radius);
     }
   }, []);
+
+  useEffect(() => {
+    loadNearbySightings(mapCenter[0], mapCenter[1], radius);
+  }, [radius]);
 
   return (
     <div className="relative w-full h-[calc(100vh-80px)] overflow-hidden rounded-3xl border border-gray-200 shadow-sm animate-in fade-in duration-500 font-sans z-0">
@@ -118,6 +124,22 @@ export default function MapExplorer() {
           <p className="text-gray-600 font-bold">Scanning area for wildlife...</p>
         </div>
       )}
+
+      {/* NEW 3: The Floating Radius Control Panel */}
+      <div className="absolute top-4 right-4 z-[1000] bg-white p-3 rounded-2xl shadow-lg border border-gray-100 backdrop-blur-md bg-white/90">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Search Radius</label>
+        <select
+          value={radius}
+          onChange={(e) => setRadius(Number(e.target.value))}
+          className="bg-gray-50 border border-gray-200 text-gray-900 text-sm font-medium rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5 outline-none cursor-pointer hover:bg-gray-100 transition-colors"
+        >
+          <option value={10000}>10 Kilometers</option>
+          <option value={50000}>50 Kilometers</option>
+          <option value={200000}>200 Kilometers</option>
+          <option value={500000}>500 Kilometers</option>
+          <option value={5000000}>Global View</option>
+        </select>
+      </div>
 
       {/* THE REAL LEAFLET MAP */}
       <MapContainer 
@@ -132,6 +154,13 @@ export default function MapExplorer() {
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {/* NEW 4: Visual Feedback! Draws a translucent boundary circle on the map */}
+        <Circle 
+          center={mapCenter} 
+          radius={radius} 
+          pathOptions={{ color: '#10b981', fillColor: '#10b981', fillOpacity: 0.1, weight: 2 }} 
         />
 
         {/* Plotting our real MongoDB data inside a Cluster Group! */}
